@@ -1,4 +1,3 @@
-
 import discord
 import requests
 import asyncio
@@ -133,7 +132,7 @@ def is_live():
 # ——— TAREFAS ———
 
 last_clip_id = None
-notified_live = False
+notified_live = False  # Marcador para verificar se já notificou que está ao vivo
 
 @tasks.loop(seconds=CHECK_INTERVAL)
 async def monitor_twitch():
@@ -145,25 +144,32 @@ async def monitor_twitch():
 
     # Verificar se está ao vivo
     if is_live():
-        if not notified_live:
+        if not notified_live:  # Envia o embed somente se não tiver sido notificado ainda
             embed = discord.Embed(title="🔴 Golpe Baixo está AO VIVO!", description=f"Acesse agora: https://twitch.tv/{TWITCH_USERNAME}", color=0x9146FF)
             embed.set_footer(text=f"Início detectado: {br_time}")
             canal = bot.get_channel(STATUS_CHANNEL_ID)
             if canal:
                 await canal.send(embed=embed)
-            notified_live = True
+            notified_live = True  # Marca como notificado
     else:
-        notified_live = False
+        if notified_live:  # Se estava ao vivo e agora foi offline, resetamos o estado
+            notified_live = False  # Reseta para poder notificar quando voltar ao vivo
 
     # Verificar novo clipe
     clip = get_latest_clip()
-    if clip and clip["id"] != last_clip_id:
-        canal = bot.get_channel(CLIP_CHANNEL_ID)
-        if canal:
-            embed = discord.Embed(title="📹 Novo clipe disponível!", url=clip["url"], description=clip["title"], color=0x1DB954)
-            embed.set_footer(text=f"Publicado: {br_time}")
-            await canal.send(embed=embed)
-        last_clip_id = clip["id"]
+    if clip:
+        # Só envia o embed do clipe se for um novo clipe
+        if clip["id"] != last_clip_id:
+            canal = bot.get_channel(CLIP_CHANNEL_ID)
+            if canal:
+                embed = discord.Embed(title="📹 Novo clipe disponível!", url=clip["url"], description=clip["title"], color=0x1DB954)
+                embed.set_footer(text=f"Publicado: {br_time}")
+                await canal.send(embed=embed)
+            last_clip_id = clip["id"]  # Atualiza o ID do último clipe enviado
+        else:
+            logger.info("Nenhum novo clipe detectado.")
+    else:
+        logger.info("Sem clipes novos.")
 
 @bot.event
 async def on_ready():
