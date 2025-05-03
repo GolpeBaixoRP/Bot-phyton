@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from discord.ext import commands, tasks
 from flask import Flask
 from threading import Thread
+from datetime import datetime
+import pytz  # Nova importação para trabalhar com fusos horários
 
 # ————————— CARREGAR VARIÁVEIS DE AMBIENTE —————————
 load_dotenv()
@@ -113,8 +115,12 @@ async def update_bot_status():
         status = check_bot_status()
 
         # Criar embed
+        # Usando timezone de Brasília
+        br_tz = pytz.timezone('America/Sao_Paulo')
+        br_time = datetime.now(br_tz).strftime('%H:%M:%S')
+
         embed = discord.Embed(title="Status do Bot", description=f"O bot está **{status}**.", color=0x00ff00 if status == "Online" else 0xff0000)
-        embed.set_footer(text=f"Última atualização: {time.strftime('%H:%M:%S')}")
+        embed.set_footer(text=f"Última atualização: {br_time}")
 
         # Enviar ou atualizar o embed no canal de status
         channel = bot.get_channel(STATUS_CHANNEL_ID)
