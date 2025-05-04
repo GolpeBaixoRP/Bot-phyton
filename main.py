@@ -114,18 +114,35 @@ async def update_bot_status():
         # Verificar o status do bot
         status = check_bot_status()
 
-        # Criar embed
         # Usando timezone de Brasília
         br_tz = pytz.timezone('America/Sao_Paulo')
-        br_time = datetime.now(br_tz).strftime('%H:%M:%S')
+        now = datetime.now(br_tz)
+        br_time = now.strftime('%d/%m/%Y às %H:%M:%S')
 
-        embed = discord.Embed(title="Status do Bot", description=f"O bot está **{status}**.", color=0x00ff00 if status == "Online" else 0xff0000)
-        embed.set_footer(text=f"Última atualização: {br_time}")
+        # Cor e emoji com base no status
+        color = 0x00ff00 if status == "Online" else 0xff0000
+        status_emoji = "🟢" if status == "Online" else "🔴"
+
+        # Criar embed
+        embed = discord.Embed(
+            title=f"{status_emoji} Status do Bot Golpe Baixo",
+            description=f"O bot está **{status}**.",
+            color=color,
+            timestamp=now
+        )
+
+        # Setar avatar do bot como thumbnail
+        if bot.user.avatar:
+            embed.set_thumbnail(url=bot.user.avatar.url)
+        else:
+            embed.set_thumbnail(url=bot.user.default_avatar.url)
+
+        embed.add_field(name="⏰ Última Verificação", value=br_time, inline=False)
+        embed.set_footer(text="Sistema Automático de Status • Golpe Baixo RP")
 
         # Enviar ou atualizar o embed no canal de status
         channel = bot.get_channel(STATUS_CHANNEL_ID)
         if channel:
-            # Tentando encontrar o embed mais recente para editar
             async for message in channel.history(limit=1):
                 await message.edit(embed=embed)
                 break
