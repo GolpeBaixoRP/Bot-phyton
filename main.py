@@ -20,6 +20,7 @@ GUILD_ID          = int(os.getenv("GUILD_ID"))
 CLIP_CHANNEL_ID   = int(os.getenv("CLIP_CHANNEL_ID"))
 CHAT_CHANNEL_ID   = int(os.getenv("CHAT_CHANNEL_ID"))
 STATUS_CHANNEL_ID = int(os.getenv("STATUS_CHANNEL_ID"))
+LIVE_STATUS_CHANNEL_ID = int(os.getenv("LIVE_STATUS_CHANNEL_ID"))  # Novo para o status "AO VIVO"
 STATUS_URL        = os.getenv("STATUS_URL")
 
 TWITCH_CLIENT_ID     = os.getenv("TWITCH_CLIENT_ID")
@@ -147,7 +148,7 @@ async def monitor_twitch():
         if not notified_live:  # Envia o embed somente se não tiver sido notificado ainda
             embed = discord.Embed(title="🔴 Golpe Baixo está AO VIVO!", description=f"Acesse agora: https://twitch.tv/{TWITCH_USERNAME}", color=0x9146FF)
             embed.set_footer(text=f"Início detectado: {br_time}")
-            canal = bot.get_channel(STATUS_CHANNEL_ID)
+            canal = bot.get_channel(LIVE_STATUS_CHANNEL_ID)  # Canal de "AO VIVO" atualizado
             if canal:
                 await canal.send(embed=embed)
             notified_live = True  # Marca como notificado
