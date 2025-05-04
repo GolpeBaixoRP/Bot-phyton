@@ -20,13 +20,13 @@ GUILD_ID          = int(os.getenv("GUILD_ID"))
 CLIP_CHANNEL_ID   = int(os.getenv("CLIP_CHANNEL_ID"))
 CHAT_CHANNEL_ID   = int(os.getenv("CHAT_CHANNEL_ID"))
 STATUS_CHANNEL_ID = int(os.getenv("STATUS_CHANNEL_ID"))
+NOTIFICATION_CHANNEL_ID = int(os.getenv("NOTIFICATION_CHANNEL_ID"))  # Canal de notificação
 STATUS_URL        = os.getenv("STATUS_URL")
 
 TWITCH_CLIENT_ID     = os.getenv("TWITCH_CLIENT_ID")
 TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET")
 TWITCH_USERNAME      = os.getenv("TWITCH_USERNAME")
 CHECK_INTERVAL       = 60  # segundos (1 minuto)
-
 # ————————— LOGGING —————————
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("GolpeBaixoBot")
