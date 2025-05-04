@@ -11,10 +11,10 @@ from threading import Thread
 from datetime import datetime
 import pytz
 
-# ————————— CARREGAR VARIÁVEIS DE AMBIENTE —————————
+# —————— CARREGAR VARIÁVEIS DE AMBIENTE ——————
 load_dotenv()
 
-# ————————— CONFIGURAÇÕES —————————
+# —————— CONFIGURAÇÕES ——————
 TOKEN             = os.getenv("DISCORD_TOKEN")
 GUILD_ID          = int(os.getenv("GUILD_ID"))
 CLIP_CHANNEL_ID   = int(os.getenv("CLIP_CHANNEL_ID"))
@@ -27,11 +27,11 @@ TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET")
 TWITCH_USERNAME      = os.getenv("TWITCH_USERNAME")
 CHECK_INTERVAL       = 60
 
-# ————————— LOGGING —————————
+# —————— LOGGING ——————
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("GolpeBaixoBot")
 
-# ————————— FLASK —————————
+# —————— FLASK ——————
 app = Flask(__name__)
 
 @app.route('/')
@@ -45,7 +45,7 @@ def start_flask():
 flask_thread = Thread(target=start_flask)
 flask_thread.start()
 
-# ————————— BOT DISCORD —————————
+# —————— BOT DISCORD ——————
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
