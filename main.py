@@ -9,30 +9,29 @@ from discord.ext import commands, tasks
 from flask import Flask
 from threading import Thread
 from datetime import datetime
-import pytz
+import pytz  # Nova importação para trabalhar com fusos horários
 
-# —————— CARREGAR VARIÁVEIS DE AMBIENTE ——————
+# ————————— CARREGAR VARIÁVEIS DE AMBIENTE —————————
 load_dotenv()
 
-# —————— CONFIGURAÇÕES ——————
+# ————————— CONFIGURAÇÕES —————————
 TOKEN             = os.getenv("DISCORD_TOKEN")
 GUILD_ID          = int(os.getenv("GUILD_ID"))
 CLIP_CHANNEL_ID   = int(os.getenv("CLIP_CHANNEL_ID"))
 CHAT_CHANNEL_ID   = int(os.getenv("CHAT_CHANNEL_ID"))
 STATUS_CHANNEL_ID = int(os.getenv("STATUS_CHANNEL_ID"))
-LIVE_STATUS_CHANNEL_ID = int(os.getenv("LIVE_STATUS_CHANNEL_ID"))  # Novo para o status "AO VIVO"
 STATUS_URL        = os.getenv("STATUS_URL")
 
 TWITCH_CLIENT_ID     = os.getenv("TWITCH_CLIENT_ID")
 TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET")
 TWITCH_USERNAME      = os.getenv("TWITCH_USERNAME")
-CHECK_INTERVAL       = 60
+CHECK_INTERVAL       = 60  # segundos (1 minuto)
 
-# —————— LOGGING ——————
+# ————————— LOGGING —————————
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("GolpeBaixoBot")
 
-# —————— FLASK ——————
+# ————————— FLASK —————————
 app = Flask(__name__)
 
 @app.route('/')
@@ -46,7 +45,7 @@ def start_flask():
 flask_thread = Thread(target=start_flask)
 flask_thread.start()
 
-# —————— BOT DISCORD ——————
+# ————————— BOT DISCORD —————————
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -77,41 +76,6 @@ def get_twitch_oauth_token():
         logger.error(f"[OAuth] Erro ao pegar token Twitch: {e}")
         return None
 
-def get_latest_clip():
-    try:
-        token = get_twitch_oauth_token()
-        if not token:
-            return None
-        url = f'https://api.twitch.tv/helix/clips?broadcaster_id={get_broadcaster_id()}&first=1'
-        headers = {
-            'Client-ID': TWITCH_CLIENT_ID,
-            'Authorization': f'Bearer {token}'
-        }
-        resp = requests.get(url, headers=headers)
-        resp.raise_for_status()
-        data = resp.json().get("data")
-        return data[0] if data else None
-    except Exception as e:
-        logger.error(f"[get_latest_clip] Erro ao pegar clip: {e}")
-        return None
-
-def get_broadcaster_id():
-    try:
-        token = get_twitch_oauth_token()
-        if not token:
-            return None
-        url = f'https://api.twitch.tv/helix/users?login={TWITCH_USERNAME}'
-        headers = {
-            'Client-ID': TWITCH_CLIENT_ID,
-            'Authorization': f'Bearer {token}'
-        }
-        resp = requests.get(url, headers=headers)
-        resp.raise_for_status()
-        return resp.json()['data'][0]['id']
-    except Exception as e:
-        logger.error(f"[get_broadcaster_id] Erro: {e}")
-        return None
-
 def is_live():
     try:
         token = get_twitch_oauth_token()
@@ -130,52 +94,57 @@ def is_live():
         logger.error(f"[is_live] Erro ao verificar se está ao vivo: {e}")
         return False
 
+# Função para verificar se o bot está online ou offline a partir de uma URL
+def check_bot_status():
+    try:
+        response = requests.get(STATUS_URL)
+        if response.status_code == 200:
+            return "Online"
+        else:
+            return "Offline"
+    except requests.exceptions.RequestException as e:
+        logger.error(f"[check_bot_status] Erro ao verificar status do bot: {e}")
+        return "Offline"
+
 # ——— TAREFAS ———
 
-last_clip_id = None
-notified_live = False  # Marcador para verificar se já notificou que está ao vivo
-
 @tasks.loop(seconds=CHECK_INTERVAL)
-async def monitor_twitch():
-    global last_clip_id, notified_live
+async def update_bot_status():
+    try:
+        # Verificar o status do bot
+        status = check_bot_status()
 
-    # Timezone de Brasília
-    br_tz = pytz.timezone('America/Sao_Paulo')
-    br_time = datetime.now(br_tz).strftime('%H:%M:%S')
+        # Criar embed
+        # Usando timezone de Brasília
+        br_tz = pytz.timezone('America/Sao_Paulo')
+        br_time = datetime.now(br_tz).strftime('%H:%M:%S')
 
-    # Verificar se está ao vivo
-    if is_live():
-        if not notified_live:  # Envia o embed somente se não tiver sido notificado ainda
-            embed = discord.Embed(title="🔴 Golpe Baixo está AO VIVO!", description=f"Acesse agora: https://twitch.tv/{TWITCH_USERNAME}", color=0x9146FF)
-            embed.set_footer(text=f"Início detectado: {br_time}")
-            canal = bot.get_channel(LIVE_STATUS_CHANNEL_ID)  # Canal de "AO VIVO" atualizado
-            if canal:
-                await canal.send(embed=embed)
-            notified_live = True  # Marca como notificado
-    else:
-        if notified_live:  # Se estava ao vivo e agora foi offline, resetamos o estado
-            notified_live = False  # Reseta para poder notificar quando voltar ao vivo
+        embed = discord.Embed(title="Status do Bot", description=f"O bot está **{status}**.", color=0x00ff00 if status == "Online" else 0xff0000)
+        embed.set_footer(text=f"Última atualização: {br_time}")
 
-    # Verificar novo clipe
-    clip = get_latest_clip()
-    if clip:
-        # Só envia o embed do clipe se for um novo clipe
-        if clip["id"] != last_clip_id:
-            canal = bot.get_channel(CLIP_CHANNEL_ID)
-            if canal:
-                embed = discord.Embed(title="📹 Novo clipe disponível!", url=clip["url"], description=clip["title"], color=0x1DB954)
-                embed.set_footer(text=f"Publicado: {br_time}")
-                await canal.send(embed=embed)
-            last_clip_id = clip["id"]  # Atualiza o ID do último clipe enviado
+        # Enviar ou atualizar o embed no canal de status
+        channel = bot.get_channel(STATUS_CHANNEL_ID)
+        if channel:
+            # Tentando encontrar o embed mais recente para editar
+            async for message in channel.history(limit=1):
+                await message.edit(embed=embed)
+                break
+            else:
+                await channel.send(embed=embed)
         else:
-            logger.info("Nenhum novo clipe detectado.")
-    else:
-        logger.info("Sem clipes novos.")
+            logger.warning("[update_bot_status] Canal de status não encontrado.")
+    except Exception as e:
+        logger.error(f"[update_bot_status] Erro: {e}")
+
+# ——— EVENTOS ———
 
 @bot.event
 async def on_ready():
     logger.info(f'✅ Bot conectado como {bot.user}')
-    monitor_twitch.start()
+    try:
+        update_bot_status.start()  # Começar a tarefa de atualização do status
+    except Exception as e:
+        logger.error(f"[on_ready] Erro ao iniciar tarefas: {e}")
 
 @bot.event
 async def on_message(message):
@@ -184,14 +153,16 @@ async def on_message(message):
             return
 
         for key, resp in respostas.items():
-            if key in message.content.lower() and message.channel.id == CHAT_CHANNEL_ID:
-                await message.channel.send(resp)
+            if key in message.content.lower():
+                if message.channel.id == CHAT_CHANNEL_ID:
+                    await message.channel.send(resp)
                 break
 
         await bot.process_commands(message)
     except Exception as e:
         logger.error(f"[on_message] Erro: {e}")
 
+# ——— INICIA BOT ———
 try:
     bot.run(TOKEN)
 except Exception as e:
